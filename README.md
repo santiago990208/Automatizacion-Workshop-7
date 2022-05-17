@@ -8,10 +8,10 @@ Santiago Botero -  Nicolas Imbachi
  - [Conectividad](#conectividad)
    - [Conectividad física](#conectividad-física)
    - [Protocolo de comunicación](#protocolo-de-comunicación)
-   - [Protocolo de aplicación](#protocolo-de-aplicación)
- - [Analitica de datos](#analitica-de-datos)
+   - [Codigo](#codigo)
+ - [Testing y video](#testing-y-video)
 ## Diagrama
-*Diagrama*
+![plot](./master_slave.png)
 ## Sensor
 
 Sensor digital de temperatura TMP36.
@@ -52,8 +52,9 @@ Referencia: [Arduino Uno Rev3](https://docs.arduino.cc/resources/datasheets/A000
 ### Software
 
 - Autodesk Tinkercad.
+- Arduino IDE
 
-Referencia: [Autodesk Tinkercad](https://www.tinkercad.com/)
+Referencia: [Autodesk Tinkercad](https://www.tinkercad.com/), [Arduino IDE](https://docs.arduino.cc)
 
 ## Conectividad
 
@@ -71,6 +72,88 @@ En las placas Arduino Uno Rev  los pines usados son A4 para SDA y A5 para SCL.
 
 Referencia: [I2C Protocol ](https://docs.arduino.cc/learn/communication/wire)
 
-## Analitica de datos
-Para la solución implementamos el centro de IoT brindado por Azure, el cual no solo nos permite recibir la data en tiempo real, sino que también muestra una serie de gráficos con los cuales se puede realizar la analítica de la aplicación que se está implementando
+### Codigo
+#### Maestro
+```cpp
+#include <Wire.h>
+
+bool Sig = false;
+String Msg; 
+int Actual = 0;
+float Temperature = 0.0;
+
+void setup()
+{
+  pinMode(LED_BUILTIN, OUTPUT);
+  Serial.begin(9600);
+  Wire.begin(4);
+  Wire.onRequest(Request);
+  Wire.onReceive(Ans);
+}
+
+void loop()
+{
+  Actual = analogRead(0);
+  Temperature = map(analogRead(0),0,1023,-50,450);
+  Serial.println(Temperature);
+  delay(500);
+}
+
+void Request()
+{
+  if (Sig == true)
+  {
+    Wire.write(String(Temperature, 3).length());
+    Sig = false;
+  }
+  else {
+    Serial.println(String(Temperature,3));
+    Wire.println(String(Temperature,3));
+  }
+}
+
+void Ans(int Num)
+{
+  if(Wire.read() == 'B'){
+    Sig = true;
+  }
+} 
+```
+#### Esclavo
+```cpp
+#include <Wire.h>
+
+void setup()
+{
+  pinMode(13, OUTPUT);
+  Wire.begin();
+  Serial.begin(9600);
+}
+
+void loop()
+{
+  Wire.beginTransmission(4);
+  Wire.write('B');
+  Wire.endTransmission(); 
+  
+  Wire.requestFrom(4,1);
+  byte l = Wire.read();
+  Wire.requestFrom(4, (int(l)));
+  String T = "";
+  while (Wire.available()){
+  	char M = Wire.read();
+    T = T + M;
+  }
+  Serial.println(T);
+  if (T.toFloat()>30) {
+  	digitalWrite(13, 1);
+  }
+  else {
+  	digitalWrite(13, 0);
+  }
+  delay(500);              
+}
+```
+## Testing y video
+[![Watch the video](https://i.imgur.com/JqwJ3Ep.png)](https://youtu.be/vt5fpE0bzSY)
 
